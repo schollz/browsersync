@@ -24,7 +24,15 @@ And then load your browser to `localhost:8003` which will render `index.html`. A
 
 ### Rendering Markdown
 
-You can also use this to render markdown. You simply make an HTML page, like `index.html` with the following:
+You can also use this to render markdown. The simplest way is to use
+
+```
+$ browersync --index README.md
+```
+
+which will define the `README.md` to be the index page and automatically turn on Markdown rendering.
+
+Alternatively, if you want to use your own styling, you simply make an HTML page, like `index.html` with the following:
 
 ```html
 <html>

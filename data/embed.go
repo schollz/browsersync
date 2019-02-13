@@ -23,6 +23,11 @@ func main() {
 	check(err)
 	f.WriteString(fmt.Sprintf("const js = `%s`\n\n", js))
 	f.WriteString(fmt.Sprintf(`const jsFile = "%s.js"`+"\n\n", RandStringBytesMaskImprSrc(10)))
+
+	b, err := ioutil.ReadFile("data/index.html")
+	check(err)
+	f.WriteString(fmt.Sprintf("const defaultHTML = `%s`\n\n", b))
+
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

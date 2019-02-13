@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,15 +25,21 @@ import (
 	"github.com/shurcooL/github_flavored_markdown"
 )
 
-var folderToWatch string
+var folderToWatch, indexPage string
 var port int
+var renderMarkdown bool
 
 func main() {
 	flag.IntVar(&port, "p", 8003, "port to serve")
+	flag.BoolVar(&renderMarkdown, "style", false, "whether to add default styling to render markdown")
+	flag.StringVar(&indexPage, "index", "index.html", "index page to render on /")
 	flag.StringVar(&folderToWatch, "f", "", "folder to watch (default: current)")
 	flag.Parse()
 	if folderToWatch == "" {
 		folderToWatch = "."
+	}
+	if filepath.Ext(indexPage) == ".md" {
+		renderMarkdown = true
 	}
 	var err error
 	err = serve()
@@ -92,7 +99,7 @@ Disallow: /`))
 		w.Write([]byte(js))
 	} else {
 		if r.URL.Path == "/" {
-			r.URL.Path = "/index.html"
+			r.URL.Path = "/" + indexPage
 		}
 		var b []byte
 		b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:])))
@@ -125,13 +132,21 @@ Disallow: /`))
 			var buf bytes.Buffer
 			err = mainTemplate.Execute(&buf, nil)
 			b = buf.Bytes()
+		}
+
+		log.Println(renderMarkdown)
+		if renderMarkdown {
+			b = []byte(strings.Replace(defaultHTML, "XX", string(MarkdownToHTML(r.URL.Path[1:])), 1))
+			kind = "text/html"
+		}
+
+		if kind == "text/html" {
 			b = bytes.Replace(b,
 				[]byte("</body>"),
 				[]byte(fmt.Sprintf(`<script src="/%s"></script></body>`, jsFile)),
 				1,
 			)
 		}
-		fmt.Println(kind)
 
 		w.Header().Set("Content-Type", kind)
 		w.Write(b)
