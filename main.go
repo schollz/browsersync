@@ -91,6 +91,8 @@ Disallow: /`))
 		} else {
 			kind = http.DetectContentType(b[:512])
 		}
+
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 		switch filepath.Ext(r.URL.Path) {
 		case ".md":
 			kind = "text/plain"
