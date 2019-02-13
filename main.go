@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -13,13 +14,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/microcosm-cc/bluemonday"
-	blackfriday "github.com/russross/blackfriday/v2"
+	blackfriday "gopkg.in/russross/blackfriday.v1"
 )
 
 func main() {
@@ -35,18 +35,8 @@ func MarkdownToHTML(fname string) template.HTML {
 	if err != nil {
 		return template.HTML(err.Error())
 	}
-	html := blackfriday.Run([]byte(markdown),
-		blackfriday.WithExtensions(
-			blackfriday.Autolink|
-				blackfriday.Strikethrough|
-				blackfriday.SpaceHeadings|
-				blackfriday.BackslashLineBreak|
-				blackfriday.NoIntraEmphasis|
-				blackfriday.Tables|
-				blackfriday.FencedCode|
-				blackfriday.AutoHeadingIDs|
-				blackfriday.Footnotes|blackfriday.LaxHTMLBlocks),
-	)
+	html := blackfriday.MarkdownCommon([]byte(markdown))
+	fmt.Println(string(html))
 	p := bluemonday.UGCPolicy()
 	p.AddTargetBlankToFullyQualifiedLinks(true)
 	html = p.SanitizeBytes(html)
@@ -91,19 +81,10 @@ Disallow: /`))
 	} else if r.URL.Path == "/ws" {
 		// special path /ws
 		return handleWebsocket(w, r)
-	} else if r.URL.Path == "/" {
-		var b []byte
-		b, err = ioutil.ReadFile("index.html")
-		if err != nil {
-			return
-		}
-		mainTemplate, errTemplate := template.New("main").Funcs(funcMap).Parse(string(b))
-		if errTemplate != nil {
-			err = errTemplate
-			return
-		}
-		err = mainTemplate.Execute(w, nil)
 	} else {
+		if r.URL.Path == "/" {
+			r.URL.Path = "/index.html"
+		}
 		var b []byte
 		b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:])))
 		if err != nil {
@@ -116,24 +97,24 @@ Disallow: /`))
 		} else {
 			kind = http.DetectContentType(b[:512])
 		}
-		if kind == "application/octet-stream" {
-			if strings.HasSuffix(r.URL.Path, ".md") {
-				kind = "text/plain"
-			}
-		}
-		fmt.Println(kind)
-
-		w.Header().Set("Content-Type", kind)
-		if strings.HasPrefix(kind, "text/html") {
+		switch filepath.Ext(r.URL.Path) {
+		case ".md":
+			kind = "text/plain"
+		case ".html":
+			kind = "text/html"
 			mainTemplate, errTemplate := template.New("main").Funcs(funcMap).Parse(string(b))
 			if errTemplate != nil {
 				err = errTemplate
 				return
 			}
-			err = mainTemplate.Execute(w, nil)
-		} else {
-			w.Write(b)
+			var buf bytes.Buffer
+			err = mainTemplate.Execute(&buf, nil)
+			b = buf.Bytes()
 		}
+		fmt.Println(kind)
+
+		w.Header().Set("Content-Type", kind)
+		w.Write(b)
 
 		// err = mainTemplate.Execute(w, nil)
 	}
