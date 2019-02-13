@@ -18,8 +18,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/microcosm-cc/bluemonday"
-	blackfriday "gopkg.in/russross/blackfriday.v1"
+	"github.com/shurcooL/github_flavored_markdown"
 )
 
 func main() {
@@ -35,12 +34,7 @@ func MarkdownToHTML(fname string) template.HTML {
 	if err != nil {
 		return template.HTML(err.Error())
 	}
-	html := blackfriday.MarkdownCommon([]byte(markdown))
-	fmt.Println(string(html))
-	p := bluemonday.UGCPolicy()
-	p.AddTargetBlankToFullyQualifiedLinks(true)
-	html = p.SanitizeBytes(html)
-
+	html := github_flavored_markdown.Markdown([]byte(markdown))
 	return template.HTML(string(html))
 }
 

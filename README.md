@@ -7,6 +7,24 @@ Adjust the PDMS so it sits flat and the first two channels are exposed. Use a ra
 
 Now put an empty 200 ul tip on one side of the channel and then fill the other side of the channel with 200 ul of PBS 1x. Then pull out the one that received the fluid. Take out any solution that has accumulated in the holes with a a pipette.
 
+Adjust the PDMS so it sits flat and the first two channels are exposed. Use a razor blad eto make sure that the UV glue is perfectly flat against the cover Use a 20 ul tip to block the other channels, sealing the end of the tip with a little bit of Silicone glue.
+
+Now put an empty 200 ul tip on one side of the channel and then fill the other side of the channel with 200 ul of PBS 1x. Then pull out the one that received the fluid. Take out any solution that has accumulated in the holes with a a pipette.
+
+Adjust the PDMS so it sits flat and the first two channels are exposed. Use a razor blad eto make sure that the UV glue is perfectly flat against the cover Use a 20 ul tip to block the other channels, sealing the end of the tip with a little bit of Silicone glue.
+
+Now put an empty 200 ul tip on one side of the channel and then fill the other side of the channel with 200 ul of PBS 1x. Then pull out the one that received the fluid. Take out any solution that has accumulated in the holes with a a pipette.
+
+Adjust the PDMS so it sits flat and the first two channels are exposed. Use a razor blad eto make sure that the UV glue is perfectly flat against the cover Use a 20 ul tip to block the other channels, sealing the end of the tip with a little bit of Silicone glue.
+
+```python
+Now put an empty 200 ul tip on one side of the channel and then fill the other side of the channel with 200 ul of PBS 1x. Then pull out the one that received the fluid. Take out any solution that has accumulated in the holes with a a pipette.
+```
+
+Adjust the PDMS so it sits flat and the first two channels are exposed. Use a razor blad eto make sure that the UV glue is perfectly flat against the cover Use a 20 ul tip to block the other channels, sealing the end of the tip with a little bit of Silicone glue.
+
+Now put an empty 200 ul tip on one side of the channel and then fill the other side of the channel with 200 ul of PBS 1x. Then pull out the one that received the fluid. Take out any solution that has accumulated in the holes with a a pipette.
+
 ## Add buffer
 
 aslkdfj
