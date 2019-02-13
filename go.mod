@@ -1,6 +1,7 @@
 module github.com/schollz/browsersync
 
 require (
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gorilla/websocket v1.4.0
 	github.com/microcosm-cc/bluemonday v1.0.2 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect

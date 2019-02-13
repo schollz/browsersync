@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/websocket"
 	"github.com/shurcooL/github_flavored_markdown"
 )
@@ -170,112 +171,53 @@ func handleWebsocket(w http.ResponseWriter, r *http.Request) (err error) {
 	return
 }
 
-func watchFileSystem() {
-	currentFiles := make(map[string]time.Time)
-	files, _ := ListFilesRecursivelyInParallel(".")
-	for _, f := range files {
-		currentFiles[f.Path] = f.ModTime
-	}
-
-	for {
-		time.Sleep(100 * time.Millisecond)
-		files, _ := ListFilesRecursivelyInParallel(".")
-		changedFiles := []string{}
-		for _, f := range files {
-			if _, ok := currentFiles[f.Path]; !ok {
-				changedFiles = append(changedFiles, f.Path)
-			} else if f.ModTime != currentFiles[f.Path] {
-				changedFiles = append(changedFiles, f.Path)
-			}
-			currentFiles[f.Path] = f.ModTime
-		}
-
-		if len(changedFiles) > 0 {
-			log.Printf("changed files: %+v, reloading", changedFiles)
-			wsConnections.Lock()
-			for c := range wsConnections.cs {
-				wsConnections.cs[c].WriteJSON(Payload{Message: "reload"})
-			}
-			wsConnections.Unlock()
-		}
-	}
-}
-
-// File is the object that contains the info and path of the file
-type File struct {
-	Path    string
-	Size    int64
-	Mode    os.FileMode
-	ModTime time.Time
-	IsDir   bool
-	Hash    uint64 `hash:"ignore"`
-}
-
-// ListFilesRecursivelyInParallel uses goroutines to list all the files
-func ListFilesRecursivelyInParallel(dir string) (files []File, err error) {
-	dir = filepath.Clean(dir)
-	f, err := os.Open(dir)
+func watchFileSystem() (err error) {
+	// creates a new file watcher
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return
+		return err
 	}
-	info, err := f.Stat()
-	if err != nil {
-		return
-	}
-	files = []File{
-		{
-			Path:    dir,
-			Size:    info.Size(),
-			Mode:    info.Mode(),
-			ModTime: info.ModTime(),
-			IsDir:   info.IsDir(),
-		},
-	}
-	f.Close()
+	defer watcher.Close()
 
-	fileChan := make(chan File)
-	startedDirectories := make(chan bool)
-	go listFilesInParallel(dir, startedDirectories, fileChan)
+	lastEvent := time.Now()
 
-	runningCount := 1
-	for {
-		select {
-		case file := <-fileChan:
-			files = append(files, file)
-		case newDir := <-startedDirectories:
-			if newDir {
-				runningCount++
-			} else {
-				runningCount--
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if time.Since(lastEvent).Nanoseconds() > (50 * time.Millisecond).Nanoseconds() {
+					lastEvent = time.Now()
+					log.Println("event:", event)
+					wsConnections.Lock()
+					for c := range wsConnections.cs {
+						wsConnections.cs[c].WriteJSON(Payload{Message: "reload"})
+					}
+					wsConnections.Unlock()
+				}
+
+				// if event.Op&fsnotify.Write == fsnotify.Write {
+				// 	log.Println("modified file:", event.Name)
+				// }
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
 			}
-		default:
 		}
-		if runningCount == 0 {
-			break
-		}
-	}
-	return
-}
+	}()
 
-func listFilesInParallel(dir string, startedDirectories chan bool, fileChan chan File) {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err)
-	}
-	for _, f := range files {
-		fileStruct := File{
-			Path:    path.Join(dir, f.Name()),
-			Size:    f.Size(),
-			Mode:    f.Mode(),
-			ModTime: f.ModTime(),
-			IsDir:   f.IsDir(),
+	filepath.Walk(".", func(path string, fi os.FileInfo, err error) error {
+		if fi.Mode().IsDir() {
+			return watcher.Add(path)
 		}
-		fileChan <- fileStruct
-		if f.IsDir() {
-			startedDirectories <- true
-			go listFilesInParallel(path.Join(dir, f.Name()), startedDirectories, fileChan)
-		}
-	}
-	startedDirectories <- false
+		return nil
+	})
+
+	<-done
 	return
 }
