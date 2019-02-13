@@ -1,13 +1,3 @@
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-
-<body onload="loadScroll()" onunload="saveScroll()">
-
-{{MarkdownToHTML "README.md" }}
-
-<script>
 // scroll saving
 var cookieName = "page_scroll";
 var expdays = 365;
@@ -71,6 +61,14 @@ function loadScroll() {
     }
 }
 
+document.addEventListener("DOMContentLoaded", function() {
+    loadScroll();
+});
+
+window.addEventListener("beforeunload", function (event) {
+    saveScroll();
+});
+
 
 // websockets 
 var socket;
@@ -95,7 +93,3 @@ const socketCloseListener = (event) => {
     socket.addEventListener('close', socketCloseListener);
 };
 socketCloseListener();
-</script>
-
-</body>
-</html>

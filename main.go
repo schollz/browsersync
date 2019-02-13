@@ -2,10 +2,12 @@
 // go run main.go will generate the index.html
 // go build; ./now will run a live-reload server
 
+//go:generate go run data/embed.go
 package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -22,7 +24,16 @@ import (
 	"github.com/shurcooL/github_flavored_markdown"
 )
 
+var folderToWatch string
+var port int
+
 func main() {
+	flag.IntVar(&port, "p", 8003, "port to serve")
+	flag.StringVar(&folderToWatch, "f", "", "folder to watch (default: current)")
+	flag.Parse()
+	if folderToWatch == "" {
+		folderToWatch = "."
+	}
 	var err error
 	err = serve()
 	if err != nil {
@@ -49,9 +60,9 @@ func init() {
 
 func serve() (err error) {
 	go watchFileSystem()
-	log.Println("running")
+	log.Printf("listening on :%d", port)
 	http.HandleFunc("/", handler)
-	return http.ListenAndServe(":8003", nil)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +87,9 @@ Disallow: /`))
 	} else if r.URL.Path == "/ws" {
 		// special path /ws
 		return handleWebsocket(w, r)
+	} else if r.URL.Path == "/"+jsFile {
+		w.Header().Set("Content-Type", "text/javascript")
+		w.Write([]byte(js))
 	} else {
 		if r.URL.Path == "/" {
 			r.URL.Path = "/index.html"
@@ -95,6 +109,10 @@ Disallow: /`))
 
 		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 		switch filepath.Ext(r.URL.Path) {
+		case ".js":
+			kind = "text/javascript"
+		case ".css":
+			kind = "text/css"
 		case ".md":
 			kind = "text/plain"
 		case ".html":
@@ -107,6 +125,11 @@ Disallow: /`))
 			var buf bytes.Buffer
 			err = mainTemplate.Execute(&buf, nil)
 			b = buf.Bytes()
+			b = bytes.Replace(b,
+				[]byte("</body>"),
+				[]byte(fmt.Sprintf(`<script src="/%s"></script></body>`, jsFile)),
+				1,
+			)
 		}
 		fmt.Println(kind)
 
@@ -211,8 +234,9 @@ func watchFileSystem() (err error) {
 		}
 	}()
 
-	filepath.Walk(".", func(path string, fi os.FileInfo, err error) error {
+	filepath.Walk(folderToWatch, func(path string, fi os.FileInfo, err error) error {
 		if fi.Mode().IsDir() {
+			log.Printf("watching %s", path)
 			return watcher.Add(path)
 		}
 		return nil
