@@ -46,8 +46,8 @@ function saveScroll() {
     var expdate = new Date();
     expdate.setTime(expdate.getTime() + (expdays*24*60*60*1000)); // expiry date
 
-    var x = document.pageXOffset || document.body.scrollLeft;
-    var y = document.pageYOffset || document.body.scrollTop;
+    var x = document.pageXOffset || document.body.scrollLeft || window.scrollX;
+    var y = document.pageYOffset || document.body.scrollTop || window.scrollY;
     var data = x + "_" + y;
     setCookie(cookieName, data, expdate);
 }
