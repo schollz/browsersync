@@ -102,9 +102,16 @@ Disallow: /`))
 			r.URL.Path = "/" + indexPage
 		}
 		var b []byte
+		log.Println(path.Join(".", path.Clean(r.URL.Path[1:])))
 		b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:])))
 		if err != nil {
-			return
+			log.Println(err)
+			log.Println("try2:", path.Join(".", path.Clean(r.URL.Path[1:]), "index.html"))
+			b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:]), "index.html"))
+			if err != nil {
+				err = fmt.Errorf("could not find file")
+				return
+			}
 		}
 
 		var kind string
@@ -122,16 +129,16 @@ Disallow: /`))
 			kind = "text/css"
 		case ".md":
 			kind = "text/plain"
-		case ".html":
+		default:
 			kind = "text/html"
 			mainTemplate, errTemplate := template.New("main").Funcs(funcMap).Parse(string(b))
-			if errTemplate != nil {
-				err = errTemplate
-				return
+			if errTemplate == nil {
+				var buf bytes.Buffer
+				err = mainTemplate.Execute(&buf, nil)
+				b = buf.Bytes()
+			} else {
+				log.Println("problem as template: ", errTemplate)
 			}
-			var buf bytes.Buffer
-			err = mainTemplate.Execute(&buf, nil)
-			b = buf.Bytes()
 		}
 
 		log.Println(renderMarkdown)
