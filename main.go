@@ -140,7 +140,7 @@ Disallow: /`))
 			kind = http.DetectContentType(b[:512])
 		}
 
-		if kind == "application/octet-stream" || strings.HasPrefix(kind, "text/plain") {
+		if strings.HasPrefix(kind, "application/octet-stream") || strings.HasPrefix(kind, "text/plain") {
 			// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
 			switch filepath.Ext(urlPath) {
 			case ".js":
@@ -154,7 +154,7 @@ Disallow: /`))
 			}
 		}
 
-		if kind == "text/html" {
+		if strings.HasPrefix(kind, "text/html") {
 			mainTemplate, errTemplate := template.New("main").Funcs(funcMap).Parse(string(b))
 			if errTemplate == nil {
 				var buf bytes.Buffer
@@ -170,13 +170,18 @@ Disallow: /`))
 			kind = "text/html"
 		}
 
-		if kind == "text/html" {
+		if strings.HasPrefix(kind, "text/html") {
 			b = bytes.Replace(b,
 				[]byte("</body>"),
 				[]byte(fmt.Sprintf(`<script src="/%s"></script></body>`, jsFile)),
 				1,
 			)
 		}
+
+		log.WithFields(logrus.Fields{
+			"file": filepath.ToSlash(filepath.Clean(r.URL.Path)),
+			"kind": kind,
+		}).Debug("finished")
 
 		w.Header().Set("Content-Type", kind)
 		w.Write(b)
