@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -22,15 +21,28 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/websocket"
+	"github.com/mattn/go-colorable"
 	"github.com/shurcooL/github_flavored_markdown"
+	"github.com/sirupsen/logrus"
 )
 
 var folderToWatch, indexPage string
 var port int
 var renderMarkdown bool
 
+// Create a new instance of the logger. You can have any number of instances.
+var log = logrus.New()
+
+// initialize the logger
+func init() {
+	log.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	log.SetOutput(colorable.NewColorableStdout())
+}
+
 func main() {
+	var debug bool
 	flag.IntVar(&port, "p", 8003, "port to serve")
+	flag.BoolVar(&debug, "debug", false, "debug mode")
 	flag.BoolVar(&renderMarkdown, "style", false, "whether to add default styling to render markdown")
 	flag.StringVar(&indexPage, "index", "index.html", "index page to render on /")
 	flag.StringVar(&folderToWatch, "f", "", "folder to watch (default: current)")
@@ -40,6 +52,11 @@ func main() {
 	}
 	if filepath.Ext(indexPage) == ".md" {
 		renderMarkdown = true
+	}
+	if debug {
+		log.SetLevel(logrus.DebugLevel)
+	} else {
+		log.SetLevel(logrus.InfoLevel)
 	}
 	var err error
 	err = serve()
@@ -67,7 +84,7 @@ func init() {
 
 func serve() (err error) {
 	go watchFileSystem()
-	log.Printf("listening on :%d", port)
+	log.Infof("listening on :%d", port)
 	http.HandleFunc("/", handler)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
@@ -76,9 +93,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	t := time.Now().UTC()
 	err := handle(w, r)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
-	log.Printf("%v %v %v %s\n", r.RemoteAddr, r.Method, r.URL.Path, time.Since(t))
+	log.Infof("%v %v %v %s\n", r.RemoteAddr, r.Method, r.URL.Path, time.Since(t))
 }
 
 func handle(w http.ResponseWriter, r *http.Request) (err error) {
@@ -101,16 +118,18 @@ Disallow: /`))
 		if r.URL.Path == "/" {
 			r.URL.Path = "/" + indexPage
 		}
+		urlPath := r.URL.Path
+
 		var b []byte
-		log.Println(path.Join(".", path.Clean(r.URL.Path[1:])))
-		b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:])))
+		b, err = ioutil.ReadFile(path.Join(folderToWatch, path.Clean(r.URL.Path[1:])))
 		if err != nil {
-			log.Println(err)
-			log.Println("try2:", path.Join(".", path.Clean(r.URL.Path[1:]), "index.html"))
-			b, err = ioutil.ReadFile(path.Join(".", path.Clean(r.URL.Path[1:]), "index.html"))
+			// try to see if index is nested
+			b, err = ioutil.ReadFile(path.Join(folderToWatch, path.Clean(r.URL.Path[1:]), "index.html"))
 			if err != nil {
 				err = fmt.Errorf("could not find file")
 				return
+			} else {
+				urlPath = path.Join(path.Clean(r.URL.Path[1:]), "index.html")
 			}
 		}
 
@@ -121,27 +140,31 @@ Disallow: /`))
 			kind = http.DetectContentType(b[:512])
 		}
 
-		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
-		switch filepath.Ext(r.URL.Path) {
-		case ".js":
-			kind = "text/javascript"
-		case ".css":
-			kind = "text/css"
-		case ".md":
-			kind = "text/plain"
-		default:
-			kind = "text/html"
+		if kind == "application/octet-stream" || strings.HasPrefix(kind, "text/plain") {
+			// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+			switch filepath.Ext(urlPath) {
+			case ".js":
+				kind = "text/javascript"
+			case ".css":
+				kind = "text/css"
+			case ".md":
+				kind = "text/plain"
+			case ".html":
+				kind = "text/html"
+			}
+		}
+
+		if kind == "text/html" {
 			mainTemplate, errTemplate := template.New("main").Funcs(funcMap).Parse(string(b))
 			if errTemplate == nil {
 				var buf bytes.Buffer
 				err = mainTemplate.Execute(&buf, nil)
 				b = buf.Bytes()
 			} else {
-				log.Println("problem as template: ", errTemplate)
+				log.Warn("problem as template: ", errTemplate)
 			}
 		}
 
-		log.Println(renderMarkdown)
 		if renderMarkdown {
 			b = []byte(strings.Replace(defaultHTML, "XX", string(MarkdownToHTML(r.URL.Path[1:])), 1))
 			kind = "text/html"
@@ -157,8 +180,6 @@ Disallow: /`))
 
 		w.Header().Set("Content-Type", kind)
 		w.Write(b)
-
-		// err = mainTemplate.Execute(w, nil)
 	}
 	return
 }
@@ -191,7 +212,7 @@ func handleWebsocket(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 	defer c.Close()
 
-	log.Printf("%s connected\n", c.RemoteAddr().String())
+	log.Debugf("%s connected\n", c.RemoteAddr().String())
 	wsConnections.Lock()
 	if len(wsConnections.cs) == 0 {
 		wsConnections.cs = make(map[string]*websocket.Conn)
@@ -208,10 +229,10 @@ func handleWebsocket(w http.ResponseWriter, r *http.Request) (err error) {
 	for {
 		err := c.ReadJSON(&p)
 		if err != nil {
-			log.Println("read:", err)
+			log.Debug("read:", err)
 			break
 		}
-		log.Println("recv: %v", p)
+		log.Debugf("recv: %v", p)
 	}
 	return
 }
@@ -236,7 +257,9 @@ func watchFileSystem() (err error) {
 				}
 				if time.Since(lastEvent).Nanoseconds() > (50 * time.Millisecond).Nanoseconds() {
 					lastEvent = time.Now()
-					log.Println("event:", event)
+					log.WithFields(logrus.Fields{
+						"file": filepath.ToSlash(filepath.Clean(event.Name)),
+					}).Infof("reloading after %s", strings.ToLower(event.Op.String()))
 					wsConnections.Lock()
 					for c := range wsConnections.cs {
 						wsConnections.cs[c].WriteJSON(Payload{Message: "reload"})
@@ -251,14 +274,14 @@ func watchFileSystem() (err error) {
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Error("error:", err)
 			}
 		}
 	}()
 
 	filepath.Walk(folderToWatch, func(path string, fi os.FileInfo, err error) error {
 		if fi.Mode().IsDir() {
-			log.Printf("watching %s", path)
+			log.Debugf("watching %s", path)
 			return watcher.Add(path)
 		}
 		return nil
