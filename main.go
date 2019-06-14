@@ -21,23 +21,13 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/websocket"
-	"github.com/mattn/go-colorable"
+	log "github.com/schollz/logger"
 	"github.com/shurcooL/github_flavored_markdown"
-	"github.com/sirupsen/logrus"
 )
 
 var folderToWatch, indexPage string
 var port int
 var renderMarkdown bool
-
-// Create a new instance of the logger. You can have any number of instances.
-var log = logrus.New()
-
-// initialize the logger
-func init() {
-	log.SetFormatter(&logrus.TextFormatter{ForceColors: true})
-	log.SetOutput(colorable.NewColorableStdout())
-}
 
 func main() {
 	var debug bool
@@ -54,14 +44,14 @@ func main() {
 		renderMarkdown = true
 	}
 	if debug {
-		log.SetLevel(logrus.DebugLevel)
+		log.SetLevel("debug")
 	} else {
-		log.SetLevel(logrus.InfoLevel)
+		log.SetLevel("info")
 	}
 	var err error
 	err = serve()
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 }
 
@@ -177,12 +167,6 @@ Disallow: /`))
 				1,
 			)
 		}
-
-		log.WithFields(logrus.Fields{
-			"file": filepath.ToSlash(filepath.Clean(r.URL.Path)),
-			"kind": kind,
-		}).Debug("finished")
-
 		w.Header().Set("Content-Type", kind)
 		w.Write(b)
 	}
@@ -262,9 +246,7 @@ func watchFileSystem() (err error) {
 				}
 				if time.Since(lastEvent).Nanoseconds() > (50 * time.Millisecond).Nanoseconds() {
 					lastEvent = time.Now()
-					log.WithFields(logrus.Fields{
-						"file": filepath.ToSlash(filepath.Clean(event.Name)),
-					}).Infof("reloading after %s", strings.ToLower(event.Op.String()))
+					log.Infof("reloading after %s", strings.ToLower(event.Op.String()))
 					wsConnections.Lock()
 					for c := range wsConnections.cs {
 						wsConnections.cs[c].WriteJSON(Payload{Message: "reload"})
