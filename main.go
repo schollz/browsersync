@@ -244,8 +244,9 @@ func watchFileSystem() (err error) {
 				if !ok {
 					return
 				}
-				log.Debugf("modified file: %s", event.Name)
-				if time.Since(lastEvent).Nanoseconds() > (50 * time.Millisecond).Nanoseconds() {
+				_, fname := filepath.Split(event.Name)
+				log.Debugf("modified file: %s", fname)
+				if time.Since(lastEvent).Nanoseconds() > (50*time.Millisecond).Nanoseconds() && !strings.HasPrefix(fname, ".") && !strings.HasSuffix(fname, "~") {
 					lastEvent = time.Now()
 					log.Infof("reloading after %s", strings.ToLower(event.Op.String()))
 					wsConnections.Lock()
