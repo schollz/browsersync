@@ -244,6 +244,7 @@ func watchFileSystem() (err error) {
 				if !ok {
 					return
 				}
+				log.Debugf("modified file: %s", event.Name)
 				if time.Since(lastEvent).Nanoseconds() > (50 * time.Millisecond).Nanoseconds() {
 					lastEvent = time.Now()
 					log.Infof("reloading after %s", strings.ToLower(event.Op.String()))
