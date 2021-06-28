@@ -7,7 +7,7 @@ This tool is a Golang version of a paired down [browsersync](https://www.browser
 ## Install
 
 ```
-go get github.com/schollz/browsersync
+go install -v github.com/schollz/browsersync@latest
 ```
 
 ## Usage 
