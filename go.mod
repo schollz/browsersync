@@ -3,7 +3,7 @@ module github.com/schollz/browsersync
 require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gorilla/websocket v1.4.2
-	github.com/microcosm-cc/bluemonday v1.0.14 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.20 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/schollz/logger v1.2.0
 	github.com/sergi/go-diff v1.2.0 // indirect
@@ -16,8 +16,6 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d // indirect
 	github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
 )
 
 go 1.13
