@@ -141,6 +141,46 @@ Disallow: /`))
 				kind = "text/plain"
 			case ".html":
 				kind = "text/html"
+			case ".json":
+				kind = "application/json"
+			case ".svg":
+				kind = "image/svg+xml"
+			case ".png":
+				kind = "image/png"
+			case ".jpg", ".jpeg":
+				kind = "image/jpeg"
+			case ".gif":
+				kind = "image/gif"
+			case ".ico":
+				kind = "image/x-icon"
+			case ".pdf":
+				kind = "application/pdf"
+			case ".zip":
+				kind = "application/zip"
+			case ".tar":
+				kind = "application/x-tar"
+			case ".gz":
+				kind = "application/gzip"
+			case ".bz2":
+				kind = "application/x-bzip2"
+			case ".mp3":
+				kind = "audio/mpeg"
+			case ".wav":
+				kind = "audio/wav"
+			case ".mp4":
+				kind = "video/mp4"
+			case ".webm":
+				kind = "video/webm"
+			case ".ogg":
+				kind = "video/ogg"
+			case ".csv":
+				kind = "text/csv"
+			case ".xml":
+				kind = "text/xml"
+			case ".mjs":
+				kind = "text/javascript"
+			case ".wasm":
+				kind = "application/wasm"
 			}
 		}
 
